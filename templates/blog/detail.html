@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ post.title }}activity{% endblock %}
+
+{% block content %}
+<section class="py-5 trem-feed-shell">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-xl-7">
+        <article class="tweet-card card border-0 shadow-sm {% if same_author_replies %}tweet-thread-enabled{% endif %}" data-post-slug="{{ post.slug }}" data-post-author="{{ post.author.username }}">
+          <div class="card-body p-3 p-md-4 p-lg-5 tweet-card-body">
+            <div class="d-flex gap-3">
+              <div class="tweet-thread-avatar-wrap {% if same_author_replies %}tweet-thread-avatar-wrap-post{% endif %}">
+              <div class="tweet-avatar">
+                {% if post.author.profile.photo %}
+                <img src="{{ post.author.profile.photo.url }}" alt="{{ post.author.get_full_name }}">
+                {% else %}
+                <span>{{ post.author.first_name|first|upper }}{{ post.author.last_name|first|upper }}</span>
+                {% endif %}
+              </div>
+              {% if same_author_replies %}
+              <span class="tweet-thread-line"></span>
+              {% endif %}
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <h5 class="mb-0 fw-bold tweet-name">{{ post.author.get_full_name|default:post.author.username }}</h5>
+                  <span class="tweet-handle">@{{ post.author.username }}</span>
+                </div>
+                <div class="tweet-meta mb-3">
+                  <span> {{ post.created_at|date:"M j, Y g:i A" }}</span>
+                </div>
+
+                <div class="tweet-body text-dark mb-4">
+                  {{ post.content|linebreaksbr }}
+                </div>
+
+                {% if post.video %}
+                <div class="tweet-media mb-4">
+                  <video controls preload="metadata" playsinline>
+                    <source src="{{ post.video.url }}">
+                    Your browser does not support video playback.
+                  </video>
+                </div>
+                {% elif post.image %}
+                <div class="tweet-media mb-4">
+                  <img src="{{ post.image.url }}" alt="{{ post.title }}">
+                </div>
+                {% endif %}
+
+                <div class="tweet-actions mb-4">
+                  <a href="#replies" class="tweet-action"><i class="bi bi-chat"></i><span>Reply</span><span class="tweet-count">{{ comment_count }}</span></a>
+                  <button type="button" class="tweet-action tweet-share-btn" data-share-title="{{ post.title|escapejs }}" data-share-url="{{ post.get_absolute_url }}"><i class="bi bi-arrow-repeat"></i><span>Share</span></button>
+                  <form method="post" action="{% url 'core:blog_like_toggle' post.slug %}" class="d-inline tweet-like-form">
+                    {% csrf_token %}
+                    <button type="submit" class="tweet-action {% if liked %}tweet-action-liked{% endif %}">
+                      <i class="bi bi-heart{% if liked %}-fill{% endif %}"></i>
+                      <span>{% if liked %}Liked{% else %}Like{% endif %}</span>
+                      <span class="tweet-count">{{ like_count }}</span>
+                    </button>
+                  </form>
+                  {% if request.user == post.author %}
+                  <form method="post" action="{% url 'core:blog_delete' post.slug %}" class="d-inline tweet-post-delete-form">
+                    {% csrf_token %}
+                    <button type="submit" class="tweet-action tweet-action-danger"><span>Delete</span></button>
+                  </form>
+                  {% endif %}
+                </div>
+
+                <div id="replies" class="tweet-replies mt-4 pt-4 border-top">
+                  <h6 class="fw-bold mb-3">Replies</h6>
+                  {% if user.is_authenticated %}
+                  <div class="tweet-compose-mini mb-4">
+                    <form method="post" class="tweet-async-comment-form ">
+                      {% csrf_token %}
+                      {% crispy comment_form %}
+                    </form>
+                  </div>
+                  {% endif %}
+
+                  {% if comments %}
+                  <div class="tweet-comment-list" id="tweet-comment-list">
+                    {% for comment in comments %}
+                    <div class="tweet-comment mb-3 {% if comment.author == post.author %}tweet-comment-thread{% endif %}" data-comment-id="{{ comment.id }}" data-comment-author="{{ comment.author.username }}" data-comment-name="{{ comment.author.get_full_name|default:comment.author.username|escape }}">
+                      <div class="d-flex gap-3">
+                        <div class="tweet-thread-avatar-wrap tweet-thread-avatar-wrap-comment {% if comment.author == post.author %}tweet-thread-avatar-wrap-comment-thread{% endif %}">
+                        <div class="tweet-avatar tweet-avatar-sm">
+                          {% if comment.author.profile.photo %}
+                          <img src="{{ comment.author.profile.photo.url }}" alt="{{ comment.author.get_full_name }}">
+                          {% else %}
+                          <span>{{ comment.author.first_name|first|upper }}{{ comment.author.last_name|first|upper }}</span>
+                          {% endif %}
+                        </div>
+                        {% if comment.author == post.author %}
+                        <span class="tweet-thread-line"></span>
+                        {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                          <div class="d-flex align-items-start gap-2 flex-wrap">
+                            <div class="flex-grow-1 d-flex align-items-center gap-2 flex-wrap min-w-0">
+                            <span class="fw-semibold text-dark">{{ comment.author.get_full_name|default:comment.author.username }}</span>
+                            <span class="tweet-handle">@{{ comment.author.username }}</span>
+                            <span class="tweet-meta">{{ comment.created_at|date:"M j, g:i A" }}</span>
+                            </div>
+                            {% if user.is_authenticated %}
+                            <div class="dropdown tweet-comment-menu ms-auto">
+                              <button class="btn tweet-comment-menu-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Reply options">
+                                <i class="bi bi-three-dots"></i>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end tweet-post-menu-list tweet-comment-menu-list">
+                                {% if request.user == comment.author or request.user == post.author %}
+                                <li>
+                                  <button type="button" class="dropdown-item text-danger tweet-comment-menu-delete-btn" data-comment-id="{{ comment.id }}">
+                                    <i class="bi bi-trash me-2"></i>Delete Reply
+                                  </button>
+                                </li>
+                                {% endif %}
+                                <li>
+                                  <button type="button" class="dropdown-item tweet-comment-menu-reply-btn" data-comment-id="{{ comment.id }}" data-comment-author="{{ comment.author.username }}">
+                                    <i class="bi bi-reply me-2"></i>Reply
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                            {% endif %}
+                          </div>
+                          <div class="tweet-comment-body mt-1">{{ comment.content|linebreaksbr }}</div>
+                          <div class="tweet-comment-actions mt-2">
+                            <button type="button" class="tweet-comment-action tweet-comment-reply-btn" data-comment-id="{{ comment.id }}" data-comment-author="{{ comment.author.username }}">
+                              <i class="bi bi-reply"></i>
+                              <span>Reply</span>
+                            </button>
+                            {% if user.is_authenticated %}
+                            <form method="post" action="{% url 'core:blog_comment_like_toggle' comment.id %}" class="d-inline tweet-comment-like-form">
+                              {% csrf_token %}
+                              <button type="submit" class="tweet-comment-action tweet-comment-like-button {% if comment.id in liked_comment_ids %}tweet-comment-action-liked{% endif %}">
+                                <i class="bi {% if comment.id in liked_comment_ids %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                                <span>{% if comment.id in liked_comment_ids %}Liked{% else %}Like{% endif %}</span>
+                                <span class="tweet-count">{{ comment.likes.count }}</span>
+                              </button>
+                            </form>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                      {% if request.user == comment.author or request.user == post.author %}
+                      <form method="post" action="{% url 'core:blog_comment_delete' comment.id %}" class="d-none tweet-comment-delete-form">
+                        {% csrf_token %}
+                      </form>
+                      {% endif %}
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0" id="tweet-no-replies">No replies yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}{% endblock %}

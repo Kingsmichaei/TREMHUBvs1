@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block title %}Blog{% endblock %}
+
+{% block content %}
+<section class="py-5 trem-feed-shell">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-xl-7">
+        {% if user.is_authenticated %}    
+        <a href="{% url 'core:blog_create' %}" class="blog-create-fab" aria-label="Create blog post" title="Create blog post">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        </a>
+        {% endif %}
+      
+        {% if posts %}
+        <div class="tweet-feed">
+          <div class="mb-4 text-muted small fw-semibold">For you</div>
+          {% for post in posts %}
+          <article class="tweet-card card border-0 shadow-sm mb-3 {% if post.author_reply_id %}tweet-thread-enabled tweet-feed-thread-enabled{% endif %}" data-post-slug="{{ post.slug }}" data-post-title="{{ post.title|escape }}" data-post-likes="{{ post.likes.count }}" data-post-comments="{{ post.comments.count }}" data-post-views="{{ post.view_count }}" data-post-created="{{ post.created_at|date:'M j, Y g:i A' }}">
+            <div class="card-body p-3 p-md-4 tweet-card-body">
+              <div class="d-flex gap-3">
+                <div class="tweet-thread-avatar-wrap tweet-thread-avatar-wrap-feed-post {% if post.author_reply_id %}tweet-thread-avatar-wrap-post{% endif %}">
+                <div class="tweet-avatar">
+                  {% if post.author.profile.photo %}
+                  <img src="{{ post.author.profile.photo.url }}" alt="{{ post.author.get_full_name }}">
+                  {% else %}
+                  <span>{{ post.author.first_name|first|upper }}{{ post.author.last_name|first|upper }}</span>
+                  {% endif %}
+                </div>
+                {% if post.author_reply_id %}
+                <span class="tweet-thread-line"></span>
+                {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between gap-3 align-items-start mb-1">
+                    <div>
+                      <div class="d-flex align-items-center flex-wrap gap-2">
+                        <h5 class="mb-0 fw-bold tweet-name">{{ post.author.get_full_name|default:post.author.username }}</h5>
+                        <span class="tweet-handle">@{{ post.author.username }}</span>
+                      </div>
+                      <div class="tweet-meta">
+                        <span>{{ post.created_at|date:"M j, Y g:i A" }}</span>
+                      </div>
+                    </div>
+                    {% if user.is_authenticated %}
+                    <div class="dropdown tweet-post-menu">
+                      <button class="btn tweet-post-menu-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Post options">
+                        <i class="bi bi-three-dots"></i>
+                      </button>
+                      <ul class="dropdown-menu dropdown-menu-end tweet-post-menu-list">
+                        {% if request.user == post.author %}
+                        <li>
+                          <button type="button" class="dropdown-item tweet-post-insights-btn">
+                            <i class="bi bi-barchart  me-2"></i>Insights
+                          </button>
+                        </li>
+                        <li>
+                          <button type="button" class="dropdown-item text-danger tweet-menu-delete-btn">Delete Post
+                          </button>
+                        </li>
+                        {% else %}
+                        <li>
+                          <button type="button" class="dropdown-item tweet-menu-hide-btn">
+                            <i class="bi bi-eye-slash me-2"></i>Hide Post
+                          </button>
+                        </li>
+                        <li>
+                          <a class="dropdown-item" href="{{ post.get_absolute_url }}#replies">
+                            <i class="bi bi-activity me-2"></i>View Post Interactions
+                          </a>
+                        </li>
+                        <li>
+                          <button type="button" class="dropdown-item text-danger tweet-menu-report-btn">
+                            <i class="bi bi-flag me-2"></i>Report Post
+                          </button>
+                        </li>
+                        {% endif %}
+                      </ul>
+                    </div>
+                    {% endif %}
+                  </div>
+
+                  {% if post.categories.all %}
+                  <div class="mb-2 d-flex flex-wrap gap-2">
+                    {% for cat in post.categories.all %}
+                    <span class="badge bg-light text-dark small"><i class="bi bi-tag me-1"></i>{{ cat.name }}</span>
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+
+                  {% if post.has_distinct_title %}
+                  <a href="{{ post.get_absolute_url }}" class="tweet-title text-decoration-none text-dark d-inline-block mb-2">
+                    {{ post.title }}
+                  </a>
+                  {% endif %}
+
+                  <div class="tweet-body text-dark mb-3">
+                    {{ post.content|linebreaksbr }}
+                  </div>
+
+                  {% if post.author_reply_id %}
+                  <a href="{{ post.get_absolute_url }}#comment-{{ post.author_reply_id }}" class="tweet-feed-author-reply-preview text-decoration-none d-flex gap-3 mb-3">
+                    <div class="tweet-thread-avatar-wrap tweet-thread-avatar-wrap-feed-reply tweet-thread-avatar-wrap-comment-thread">
+                      <div class="tweet-avatar tweet-avatar-sm">
+                        {% if post.author.profile.photo %}
+                        <img src="{{ post.author.profile.photo.url }}" alt="{{ post.author.get_full_name }}">
+                        {% else %}
+                        <span>{{ post.author.first_name|first|upper }}{{ post.author.last_name|first|upper }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="tweet-feed-author-reply-content">
+                      <span class="tweet-feed-author-reply-label">Author replied</span>
+                      <div class="tweet-feed-author-reply-text">{{ post.author_reply_content|truncatechars:140 }}</div>
+                    </div>
+                  </a>
+                  {% endif %}
+
+                  {% if post.video %}
+                  <a href="{{ post.get_absolute_url }}" class="tweet-media d-block mb-3">
+                    <video controls preload="metadata" playsinline>
+                      <source src="{{ post.video.url }}">
+                      Your browser does not support video playback.
+                    </video>
+                  </a>
+                  {% elif post.image %}
+                  <a href="{{ post.get_absolute_url }}" class="tweet-media d-block mb-3">
+                    <img src="{{ post.image.url }}" alt="{{ post.title }}">
+                  </a>
+                  {% endif %}
+
+                  <div class="tweet-actions gap-3 d-flex align-items-center">
+                      <a href="{{ post.get_absolute_url }}#replies" class="tweet-action"><i class="bi bi-chat"></i><span class="tweet-count">{{ post.comments.count }}</span></a>
+                      <button type="button" class="tweet-action tweet-share-btn" data-share-title="{{ post.title|escapejs }}" data-share-url="{{ post.get_absolute_url }}"><i class="bi bi-arrow-repeat"></i></button>
+                      <form method="post" action="{% url 'core:blog_like_toggle' post.slug %}" class="d-inline tweet-like-form">
+                        {% csrf_token %}
+                        <button type="submit" class="tweet-action {% if request.user.is_authenticated and post.id in liked_post_ids %}tweet-action-liked{% endif %}">
+                          <i class="bi bi-heart{% if request.user.is_authenticated and post.id in liked_post_ids %}-fill{% endif %}"></i>
+                          <!-- <span>{% if request.user.is_authenticated and post.id in liked_post_ids %}Liked{% else %}Like{% endif %}</span> -->
+                          <span class="tweet-count">{{ post.likes.count }}</span>
+                        </button>
+                      </form>
+                      {% if request.user == post.author %}
+                      <form method="post" action="{% url 'core:blog_delete' post.slug %}" class="d-none tweet-post-delete-form">
+                        {% csrf_token %}
+                      </form>
+                      {% else %}
+                      <form method="post" action="{% url 'core:blog_hide_post' post.slug %}" class="d-none tweet-post-hide-form">
+                        {% csrf_token %}
+                      </form>
+                      <form method="post" action="{% url 'core:blog_report_post' post.slug %}" class="d-none tweet-post-report-form">
+                        {% csrf_token %}
+                      </form>
+                      {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="trem-empty-state">
+          <i class="bi bi-journal-richtext"></i>
+          <h5 class="mb-2">No Posts Yet</h5>
+          <p class="text-muted mb-0">
+            {% if user.is_authenticated %}
+            Start the feed by creating the first post.
+            {% else %}
+            Blog posts will appear here soon.
+            {% endif %}
+          </p>
+          {% if user.is_authenticated %}
+          <a href="{% url 'core:blog_create' %}" class="btn btn-trem mt-3">Add Blog Post</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal fade" id="postInsightsModal" tabindex="-1" aria-labelledby="postInsightsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content tweet-insights-modal">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="postInsightsModalLabel">Post Insights</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <p class="small text-muted mb-3" id="postInsightsTitle"></p>
+        <div class="tweet-insights-grid">
+          <div class="tweet-insight-card">
+            <span class="tweet-insight-value" id="postInsightsViews">0</span>
+            <span class="tweet-insight-label">Views</span>
+          </div>
+          <div class="tweet-insight-card">
+            <span class="tweet-insight-value" id="postInsightsLikes">0</span>
+            <span class="tweet-insight-label">Likes</span>
+          </div>
+          <div class="tweet-insight-card">
+            <span class="tweet-insight-value" id="postInsightsReplies">0</span>
+            <span class="tweet-insight-label">Replies</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}{% endblock %}
